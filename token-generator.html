@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ant Media Token Generator</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 40px; }
+    .container { background: white; padding: 20px; border-radius: 8px; max-width: 600px; margin: auto; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+    h2 { text-align: center; }
+    label, input, button { display: block; width: 100%; margin-top: 10px; }
+    button { padding: 10px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+    button:hover { background: #0056b3; }
+    .output { margin-top: 20px; word-break: break-word; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Ant Media Token Generator</h2>
+    <label for="streamName">Stream Name:</label>
+    <input type="text" id="streamName" placeholder="Enter stream name">
+
+    <label for="secret">Shared Secret:</label>
+    <input type="text" id="secret" placeholder="Enter shared secret">
+
+    <label for="duration">Duration (seconds):</label>
+    <input type="number" id="duration" value="120">
+
+    <button onclick="generateToken()">Generate Token</button>
+
+    <div class="output">
+      <strong>Token URL:</strong>
+      <div id="tokenUrl"></div>
+    </div>
+  </div>
+
+  <script>
+    async function generateToken() {
+      const streamName = document.getElementById('streamName').value;
+      const secret = document.getElementById('secret').value;
+      const duration = parseInt(document.getElementById('duration').value);
+
+      if (!streamName || !secret || !duration) {
+        alert("Please fill in all fields.");
+        return;
+      }
+
+      const currentTime = Math.floor(Date.now() / 1000);
+      const expireTime = currentTime + duration;
+      const message = streamName + expireTime;
+
+      const encoder = new TextEncoder();
+      const keyData = encoder.encode(secret);
+      const messageData = encoder.encode(message);
+      const key = await window.crypto.subtle.importKey(
+        'raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+      );
+      const signature = await window.crypto.subtle.sign('HMAC', key, messageData);
+
+      const hashArray = Array.from(new Uint8Array(signature));
+      const token = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+      const playbackUrl = `https://yourdomain.com:5443/WebRTCApp/play.html?name=${streamName}&token=${token}&expire=${expireTime}`;
+      document.getElementById('tokenUrl').textContent = playbackUrl;
+    }
+  </script>
+</body>
+</html>
